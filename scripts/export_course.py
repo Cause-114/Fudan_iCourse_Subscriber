@@ -321,7 +321,7 @@ def main():
             course_title, teacher, lectures = result
             titles.append(course_title)
 
-            markdown:str = _build_plain(course_title, teacher, lectures, pdf=True)
+            markdown:str = _build_plain(course_title, teacher, lectures)
             markdown_bytes = markdown.encode("utf-8")
             filename = f"{_safe_filename(course_title)}_summaries.md"
             attachments.append((markdown_bytes, filename))
