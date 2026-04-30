@@ -23,7 +23,7 @@ get_course_text/
 docs/*
 !docs/*.png
 !docs/frontend-readme.md
-
+docs/specs/
 *.mp3
 bugs.md
 
