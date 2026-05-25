@@ -250,7 +250,7 @@ class ICourseClient:
         """
         out: list[dict] = []
         seen: set[str] = set()
-        for page in range(1, max_pages + 1):
+        for page in range(0, max_pages + 1):  # try 0-indexed for safety
             result = self.get_course_list(
                 term=term, page=page, per_page=per_page,
             )
