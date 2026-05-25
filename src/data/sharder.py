@@ -46,7 +46,7 @@ INDEX_VERSION = 2
 # stay stable across runs: only the shard containing a changed course gets a
 # new blob SHA.  The frontend's content-addressed cache (keyed by blob SHA)
 # short-circuits every other shard, making typical updates <5MB on the wire.
-MAX_COURSES_PER_SHARD = 40
+MAX_COURSES_PER_SHARD = 15
 
 
 def _course_uncompressed_size(conn: sqlite3.Connection, course_id: str) -> int:
@@ -110,8 +110,15 @@ def _group_courses(
     return groups
 
 
-def _build_shard_db(source_db: str, course_ids: list[str], output_path: str):
-    """Materialize a self-contained sqlite shard for the given courses."""
+def _build_shard_db(source_db: str, course_ids: list[str], output_path: str,
+                    include_catalog: bool = False):
+    """Materialize a self-contained sqlite shard for the given courses.
+
+    ``include_catalog`` should be ``True`` only for the first shard so the
+    ``all_courses`` catalog isn't replicated into every shard — replicating
+    it would cause ALL shard SHAs to change on every catalog refresh,
+    defeating the frontend's content-addressed cache.
+    """
     if os.path.exists(output_path):
         os.remove(output_path)
 
@@ -121,20 +128,19 @@ def _build_shard_db(source_db: str, course_ids: list[str], output_path: str):
     try:
         dst.executescript(_SCHEMA_SQL)
 
-        # ``all_courses`` is the school-wide catalog — small (~KB scale)
-        # and shared by every shard.  Replicating it into each shard keeps
-        # shards self-contained for backup/migration while letting the
-        # frontend pick up the catalog without having to merge the index.
-        catalog_rows = src.execute("SELECT * FROM all_courses").fetchall()
-        if catalog_rows:
-            cols = list(catalog_rows[0].keys())
-            col_str = ", ".join(cols)
-            ph_str = ", ".join("?" * len(cols))
-            dst.executemany(
-                f"INSERT OR REPLACE INTO all_courses ({col_str}) "
-                f"VALUES ({ph_str})",
-                [tuple(r[c] for c in cols) for r in catalog_rows],
-            )
+        if include_catalog:
+            catalog_rows = src.execute(
+                "SELECT * FROM all_courses"
+            ).fetchall()
+            if catalog_rows:
+                cols = list(catalog_rows[0].keys())
+                col_str = ", ".join(cols)
+                ph_str = ", ".join("?" * len(cols))
+                dst.executemany(
+                    f"INSERT OR REPLACE INTO all_courses ({col_str}) "
+                    f"VALUES ({ph_str})",
+                    [tuple(r[c] for c in cols) for r in catalog_rows],
+                )
 
         if not course_ids:
             dst.commit()
@@ -214,7 +220,9 @@ def shard_database(
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
             tmp_path = tmp.name
         try:
-            _build_shard_db(db_path, course_ids, tmp_path)
+            _build_shard_db(
+                db_path, course_ids, tmp_path, include_catalog=(i == 1),
+            )
             with open(tmp_path, "rb") as f:
                 raw = f.read()
         finally:
