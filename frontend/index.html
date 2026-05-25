@@ -524,7 +524,7 @@
           <div class="flex-1 min-w-0 flex flex-col">
             <div class="flex items-center justify-between px-2 py-1.5">
               <h3 class="text-sm font-semibold text-gray-700">已订阅</h3>
-              <span class="text-xs text-gray-400" x-text="subscribedCourses.length + '门'"></span>
+              <span class="text-xs text-gray-400" x-text="subscribedIds.length + '门'"></span>
             </div>
             <div class="bg-white border border-gray-200 rounded-lg overflow-y-auto max-h-[55vh] divide-y divide-gray-100 flex-1">
               <template x-for="c in subscribedCourses" :key="c.course_id">

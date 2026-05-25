@@ -591,10 +591,9 @@ document.addEventListener("alpine:init", () => {
     // ── Subscriptions editor (three-column) ──────────────────────────
     openSubscriptions() {
       this.allCoursesTerms = ICS.db.getAllCoursesTerms();
-      // Default: select the first term and load its courses only
-      // (loading all 20k+ courses at once would freeze the UI).
-      this.subsTerms = this.allCoursesTerms.length
-        ? [this.allCoursesTerms[0]] : [];
+      // Default: no term filter ("全部学期"), load the most recent
+      // 2 terms to keep the UI responsive (20k+ courses freeze Alpine).
+      this.subsTerms = [];
       this.subsDepts = [];
       this.deptSearchQuery = "";
       this.subsSearchTitle = "";
@@ -622,9 +621,14 @@ document.addEventListener("alpine:init", () => {
     },
     // ── Load courses for selected terms (not all 20k) ──────────────
     _loadCoursesForTerms() {
-      // Always include terms that have subscribed courses so the left
-      // column isn't empty when the user switches term filters.
-      var needed = new Set(this.subsTerms);
+      // Start with user-selected terms.  If none selected, default to
+      // the 2 most recent terms (performance: 20k+ courses in Alpine
+      // causes multi-second freezes on every interaction).
+      var needed = new Set(this.subsTerms.length
+        ? this.subsTerms
+        : this.allCoursesTerms.slice(0, 2));
+      // Always include terms containing subscribed course IDs so the
+      // left column isn't empty regardless of the current filter.
       for (var i = 0; i < this.subscribedIds.length; i++) {
         var sid = this.subscribedIds[i];
         for (var j = 0; j < this.allCoursesTerms.length; j++) {
