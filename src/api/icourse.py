@@ -264,36 +264,31 @@ class ICourseClient:
         return sorted(results, key=lambda x: -int(x["code"]))
 
     def list_semester_courses(self, term: str,
-                              per_page: int = 100,
-                              max_pages: int = 100) -> list[dict]:
+                              per_page: int = 500) -> list[dict]:
         """Walk every page of get-course-list for ``term``.
 
-        Returns a flat list of ``{course_id, title, teacher, dept}`` dicts,
-        deduped by course_id (preserving first occurrence).  ``dept`` is
-        opportunistic — the API exposes several possible field names for
-        the department (``kkxy_name``, ``school_name``, ``dept_name``);
-        we pick the first one that's present, falling back to None.
+        Uses ``total`` from the first response to compute the exact page
+        count — no hard-coded max.  (Caller must ensure the API hasn't
+        silently capped ``per_page`` below the requested value.)
 
-        Uses the ``total`` from the first API response to know when we've
-        fetched everything.  Falls back to the legacy ``per_page`` count
-        heuristic if the API omits ``total``.
+        Returns a flat list of ``{course_id, title, teacher, dept}`` dicts,
+        deduped by course_id.
         """
+        import math
+
         out: list[dict] = []
         seen: set[str] = set()
-        total_expected: int | None = None
 
-        # Start at page 1 (1-indexed is the iCourse convention)
-        for page in range(1, max_pages + 1):
-            result = self.get_course_list(
-                term=term, page=page, per_page=per_page,
-            )
-            # Capture total from the first page for completion check
-            if total_expected is None:
-                total_expected = result.get("total") or 0
+        # Page 1 — discover total
+        result = self.get_course_list(
+            term=term, page=1, per_page=per_page,
+        )
+        total_expected = result.get("total") or 0
+        if not total_expected:
+            return out
+        total_pages = max(1, math.ceil(total_expected / per_page))
 
-            page_items = result.get("courses", [])
-            if not page_items:
-                break
+        def _process(page_items):
             for raw in page_items:
                 cid = raw.get("id") or raw.get("course_id")
                 if not cid:
@@ -312,19 +307,22 @@ class ICourseClient:
                     "teacher": raw.get("realname") or raw.get("teacher") or "",
                     "dept": dept,
                 })
-            # Stop if fewer items than requested (last page)
-            if len(page_items) < per_page:
-                break
-            # Also stop if we have all courses (total from API)
-            if total_expected and len(out) >= total_expected:
-                break
 
-        if total_expected and len(out) < total_expected:
-            print(
-                f"WARNING: list_semester_courses fetched {len(out)} / "
-                f"{total_expected} courses (page cap reached?).  "
-                "Consider increasing ``max_pages``."
+        page_items = result.get("courses", [])
+        if not page_items:
+            return out
+        _process(page_items)
+
+        # Remaining pages 2 .. total_pages
+        for page in range(2, total_pages + 1):
+            result = self.get_course_list(
+                term=term, page=page, per_page=per_page,
             )
+            page_items = result.get("courses", [])
+            if not page_items:
+                break
+            _process(page_items)
+
         return out
 
     def get_lecture_detail(self, course_id: str, sub_id: str) -> dict:
