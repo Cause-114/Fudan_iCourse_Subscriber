@@ -102,7 +102,13 @@ class Summarizer:
             # temperature=0.3,
             timeout=180,
         )
+        if not response.choices or len(response.choices) == 0:
+            raise ValueError("API returned empty choices")
         result = response.choices[0].message.content
+        if not result:
+            raise ValueError("API returned empty content")
+
+        # result = response.choices[0].message.content
         elapsed = time.time() - t0
         # Token usage helps explain run cost — every provider's billing is
         # token-based, and rate-limit decisions key off prompt size much
