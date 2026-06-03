@@ -38,7 +38,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install Python dependencies
-        run: pip install markdown pillow requests pygments
+        run: pip install markdown pillow requests pygments pycryptodome
 
       - name: Install PDF dependencies
         if: inputs.export_pdf == true
