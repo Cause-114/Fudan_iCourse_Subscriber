@@ -5,12 +5,14 @@ Usage:
     python scripts/reset_course_data.py --course-id 30004,30005
     python scripts/reset_course_data.py --course-id 30004 --sub-title "2026-03-03第1-3节,2026-03-10第1-3节"
     python scripts/reset_course_data.py --course-id 30004,30005 --all
+    python scripts/reset_course_data.py --course-id 30004 --delete-course
 
 Options:
-    --course-id   Comma-separated course IDs to reset (required).
-    --sub-title   Comma-separated lecture titles to delete.
-    --all         Delete ALL lectures for the specified courses.
-    Without --sub-title or --all, lists lectures and exits.
+    --course-id     Comma-separated course IDs to reset (required).
+    --sub-title     Comma-separated lecture titles to delete.
+    --all           Delete ALL lectures for the specified courses.
+    --delete-course Delete the entire course(s) from courses table (including all lectures).
+    Without --sub-title, --all, or --delete-course, lists lectures and exits.
 """
 
 import argparse
@@ -62,6 +64,8 @@ def main():
                         help="Comma-separated lecture title(s) to delete")
     parser.add_argument("--all", action="store_true",
                         help="Delete ALL lectures for the specified courses")
+    parser.add_argument("--delete-course", action="store_true",
+                        help="Delete the entire course(s) from courses table (including all lectures)")
     parser.add_argument("--db", default="data/icourse.db",
                         help="Database path (default: data/icourse.db)")
     args = parser.parse_args()
@@ -84,16 +88,27 @@ def main():
     for cid in course_ids:
         show_lectures(conn, cid)
 
-    # If neither --all nor --sub-title, just list and exit
-    if not args.all and not sub_titles:
-        print("\nUse --all to delete all lectures, or --sub-title to delete specific ones.")
+    # If no action specified, just list and exit
+    if not args.all and not sub_titles and not args.delete_course:
+        print("\nUse --all to delete all lectures, --sub-title to delete specific ones, or --delete-course to delete entire courses.")
         sys.exit(0)
 
     # Perform deletion
     total_deleted = 0
     with conn:
         for cid in course_ids:
-            if args.all:
+            if args.delete_course:
+                # First delete all lectures for this course
+                lec_count = conn.execute(
+                    "DELETE FROM lectures WHERE course_id = ?", (cid,)
+                ).rowcount
+                # Then delete the course itself
+                course_count = conn.execute(
+                    "DELETE FROM courses WHERE course_id = ?", (cid,)
+                ).rowcount
+                total_deleted += lec_count + course_count
+                print(f"\nDeleted {lec_count} lecture(s) and {course_count} course record for course {cid}.")
+            elif args.all:
                 count = conn.execute(
                     "DELETE FROM lectures WHERE course_id = ?", (cid,)
                 ).rowcount

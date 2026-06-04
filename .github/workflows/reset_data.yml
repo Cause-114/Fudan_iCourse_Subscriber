@@ -16,6 +16,11 @@ on:
         required: false
         type: boolean
         default: false
+      delete_course:
+        description: "Delete the entire course(s) from database (including all lectures)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -103,7 +108,9 @@ jobs:
       - name: Reset course data
         run: |
           ARGS="--course-id '${{ inputs.course_id }}'"
-          if [ "${{ inputs.all }}" = "true" ]; then
+          if [ "${{ inputs.delete_course }}" = "true" ]; then
+            ARGS="$ARGS --delete-course"
+          elif [ "${{ inputs.all }}" = "true" ]; then
             ARGS="$ARGS --all"
           elif [ -n "${{ inputs.sub_title }}" ]; then
             ARGS="$ARGS --sub-title '${{ inputs.sub_title }}'"
