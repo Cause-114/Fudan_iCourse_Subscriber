@@ -32,9 +32,9 @@ MODEL_PROVIDERS: list[dict] = [
         "default_base_url": "https://api-inference.modelscope.cn/v1/",
         "models": [
             "deepseek-ai/DeepSeek-V4-Pro",
+            "Qwen/Qwen3.5-397B-A17B",
             "deepseek-ai/DeepSeek-V4-Flash",
             "Qwen/Qwen3.5-35B-A3B",
-            "Qwen/Qwen3.5-72B-A3B",
             "deepseek-ai/DeepSeek-V3"
         ],
     },
