@@ -4,7 +4,8 @@ on:
   schedule:
     # Every day at 19:36 BTC (UTC + 8)
     # 设计这个奇怪的时间是为了避免整点时的github队列峰值，避免排队过久。
-    - cron: "36 11 * * *"
+    - cron: "0 0 */7 9-12 5"
+    - cron: "0 0 */7 3-6 5"
   workflow_dispatch:
 
 permissions:
